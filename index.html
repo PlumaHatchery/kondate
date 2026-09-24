@@ -6,6 +6,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#f7f4ec">
 <title>毎日の献立</title>
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+<link rel="icon" type="image/png" sizes="180x180" href="icon-180.png">
 <style>
   :root{
     --paper:#f7f4ec;
@@ -18,6 +21,7 @@
     --m-redepot:#3f7fa6;
     --m-healsio:#d98a2b;
     --m-range:#6b8f71;
+    --m-nocook:#7d7391;
     --tap:48px;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -56,12 +60,14 @@
   .sug[data-machine="redepot"]{border-left-color:var(--m-redepot);}
   .sug[data-machine="healsio"]{border-left-color:var(--m-healsio);}
   .sug[data-machine="range"]{border-left-color:var(--m-range);}
+  .sug[data-machine="nocook"]{border-left-color:var(--m-nocook);}
   .sug .nm{flex:1;font-size:15px;font-weight:600;line-height:1.3;}
   .sug .mt{display:flex;align-items:center;gap:6px;margin-top:3px;font-weight:400;}
   .sug .acts{display:flex;gap:6px;flex:0 0 auto;}
   .mchip{font-size:10px;padding:1px 6px;border-radius:3px;color:#fff;font-weight:600;}
   .mchip.hotcook{background:var(--m-hotcook);} .mchip.redepot{background:var(--m-redepot);}
   .mchip.healsio{background:var(--m-healsio);} .mchip.range{background:var(--m-range);}
+  .mchip.nocook{background:var(--m-nocook);}
   .leaf{color:var(--m-range);font-size:12px;}
   .since{font-size:11px;color:var(--ink-mute);}
   .since.never{color:var(--accent);font-weight:600;}
@@ -108,6 +114,7 @@
   .fbtn[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink);}
   .fbtn[data-machine="hotcook"]{color:var(--m-hotcook);} .fbtn[data-machine="redepot"]{color:var(--m-redepot);}
   .fbtn[data-machine="healsio"]{color:var(--m-healsio);} .fbtn[data-machine="range"]{color:var(--m-range);}
+  .fbtn[data-machine="nocook"]{color:var(--m-nocook);}
   .fbtn[data-machine][aria-pressed="true"]{background:currentColor;border-color:currentColor;}
   .fbtn[data-machine][aria-pressed="true"] .lbl{color:#fff;}
   .fbtn[data-machine][aria-pressed="true"] .dot{background:#fff;}
@@ -118,6 +125,7 @@
   .dish[data-machine="redepot"]{border-left-color:var(--m-redepot);}
   .dish[data-machine="healsio"]{border-left-color:var(--m-healsio);}
   .dish[data-machine="range"]{border-left-color:var(--m-range);}
+  .dish[data-machine="nocook"]{border-left-color:var(--m-nocook);}
   .dish.recent{opacity:.45;}
   .dish-head{display:flex;align-items:center;gap:4px;padding:4px 12px 4px 4px;min-height:var(--tap);}
   .cartbox{width:var(--tap);height:var(--tap);flex:0 0 auto;border:0;background:none;
@@ -140,6 +148,14 @@
   .made-btn{margin-top:12px;width:100%;min-height:var(--tap);border:1px solid var(--accent);
             border-radius:6px;background:var(--accent);color:#fffdf8;font-size:15px;
             font-weight:600;font-family:inherit;cursor:pointer;}
+
+  .seg{display:flex;gap:0;margin-bottom:10px;border:1px solid var(--line);
+       border-radius:8px;overflow:hidden;background:var(--card);}
+  .seg button{flex:1;min-height:44px;border:0;background:none;color:var(--ink-mute);
+       font-size:14px;font-family:inherit;cursor:pointer;}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:#fffdf8;font-weight:700;}
+  .sug.main{border-left-width:4px;}
+  .sug.empty-main{color:var(--ink-mute);font-size:14px;justify-content:center;}
 
   /* ---- 買い物 ---- */
   .shop{background:var(--card);border:1px solid var(--line);border-radius:8px;
@@ -209,15 +225,19 @@
   <!-- ================= 今日 ================= -->
   <section class="panel on" id="p-today">
     <label class="fld"><span>日付</span><input type="date" id="dDate"></label>
-    <label class="fld"><span>主菜</span>
-      <input type="text" id="dMain" placeholder="鯵の塩焼き" autocomplete="off" enterkeyhint="done"></label>
+    <div class="sechead" style="margin-bottom:6px;">主菜</div>
+    <div id="mainSug"></div>
+    <input type="text" id="dMain" placeholder="カタログにない主菜を書く" autocomplete="off" enterkeyhint="done">
 
     <div class="sechead" style="margin-bottom:6px;">副菜</div>
     <div id="sugList"></div>
-    <button class="mini" id="btnRedrawAll" style="width:100%;">全部引き直す</button>
+    <button class="mini" id="btnRedrawAll" style="width:100%;">3菜まとめて引き直す</button>
 
     <details class="more" id="pickMore">
       <summary>自分で選ぶ</summary>
+      <div class="fldlbl" style="margin-top:8px;">主菜</div>
+      <div class="chips" id="mainChips"></div>
+      <div class="fldlbl" style="margin-top:12px;">副菜</div>
       <div class="chips" id="sideChips"></div>
       <div class="fldlbl" style="margin-top:12px;">ここにないものを足す</div>
       <div class="chips" id="customChips"></div>
@@ -245,15 +265,20 @@
 
   <!-- ================= 副菜 ================= -->
   <section class="panel" id="p-list">
+    <div class="seg" id="kindSeg">
+      <button type="button" data-kind="side" aria-pressed="true">副菜 24</button>
+      <button type="button" data-kind="main" aria-pressed="false">主菜 12</button>
+    </div>
     <div class="filters" id="machineFilters">
       <button class="fbtn" data-machine="all" aria-pressed="true"><span class="lbl">すべて</span></button>
       <button class="fbtn" data-machine="hotcook" aria-pressed="false"><span class="dot"></span><span class="lbl">ホットクック</span></button>
       <button class="fbtn" data-machine="redepot" aria-pressed="false"><span class="dot"></span><span class="lbl">Re・De Pot</span></button>
       <button class="fbtn" data-machine="healsio" aria-pressed="false"><span class="dot"></span><span class="lbl">ヘルシオ</span></button>
       <button class="fbtn" data-machine="range" aria-pressed="false"><span class="dot"></span><span class="lbl">レンジ</span></button>
+      <button class="fbtn" data-machine="nocook" aria-pressed="false"><span class="dot"></span><span class="lbl">火なし</span></button>
     </div>
-    <div class="filters"><button class="fbtn" id="greenFilter" aria-pressed="false">緑のもの</button></div>
-    <p class="note" style="margin:0 0 10px;">🛒 を押すと買い物リストに入ります。名前を押すと分量が出ます。</p>
+    <div class="filters" id="greenWrap"><button class="fbtn" id="greenFilter" aria-pressed="false">緑のもの</button></div>
+    <p class="note" style="margin:0 0 10px;">🧺 を押すと買い物リストに入ります。名前を押すと分量が出ます。</p>
     <div id="dishList"></div>
   </section>
 
@@ -282,10 +307,10 @@
 </main>
 
 <nav class="tabs">
-  <button data-tab="today" aria-selected="true"><span class="ic">🍚</span>今日</button>
-  <button data-tab="list"  aria-selected="false"><span class="ic">🥬</span>副菜</button>
-  <button data-tab="shop"  aria-selected="false"><span class="ic">🛒</span>買い物<span class="badge" id="shopBadge"></span></button>
-  <button data-tab="cal"   aria-selected="false"><span class="ic">📅</span>カレンダー</button>
+  <button data-tab="today" aria-selected="true"><span class="ic">🍙</span>今日</button>
+  <button data-tab="list"  aria-selected="false"><span class="ic">🥕</span>料理</button>
+  <button data-tab="shop"  aria-selected="false"><span class="ic">🧺</span>買い物<span class="badge" id="shopBadge"></span></button>
+  <button data-tab="cal"   aria-selected="false"><span class="ic">🗓️</span>カレンダー</button>
 </nav>
 
 <div id="toast"></div>
@@ -363,17 +388,116 @@ const DISHES = [
 
   { id:'ingen', name:'いんげんのごま味噌あえ', short:'いんげん', machine:'range', green:true,
     ing:'いんげん 150g / みそ 小2 / すりごま 大1 / 砂糖 小1 / 水 小1',
-    step:'ヘタをちぎってラップをして600Wで2分、調味料を混ぜてあえる。' }
+    step:'ヘタをちぎってラップをして600Wで2分、調味料を混ぜてあえる。' },
+
+  { id:'renkon', name:'れんこんのこんがり焼き', short:'れんこん', machine:'healsio', green:false,
+    ing:'れんこん 1節 / オリーブ油 大1/2 / 塩 小1/4',
+    step:'1cmの輪切りにして油と塩をまぶし、200℃で15分焼く。' },
+
+  { id:'minitomato', name:'ミニトマトのロースト', short:'ミニトマト', machine:'healsio', green:false,
+    ing:'ミニトマト 1パック / オリーブ油 大1/2 / 塩 小1/4',
+    step:'洗ってそのまま天板に広げ、油と塩をふって200℃で10分焼く。' },
+
+  { id:'paprika', name:'パプリカの素焼き', short:'パプリカ', machine:'healsio', green:false,
+    ing:'パプリカ 2個 / オリーブ油 大1/2 / 塩 小1/4',
+    step:'手で半分に割って種を取り、油と塩をまぶして200℃で12分焼く。' },
+
+  { id:'satoimo', name:'里いもの煮っころがし', short:'里いも', machine:'redepot', green:false,
+    ing:'冷凍里いも 300g / 水 大4 / しょうゆ 大1 / みりん 大1 / 砂糖 小1',
+    step:'凍ったまま全部入れ、加圧2分のあと自然放置。' },
+
+  { id:'daikon', name:'大根のだし煮', short:'大根', machine:'redepot', green:false,
+    ing:'大根 1/3本 / 水 カップ1/2 / しょうゆ 大1 / みりん 大1 / かつお節 1袋',
+    step:'2cmの輪切りにして全部入れ、加圧5分のあと自然放置。' },
+
+  { id:'kabu', name:'かぶの丸ごと煮', short:'かぶ', machine:'redepot', green:true,
+    ing:'かぶ 4個 / 水 カップ1/2 / しょうゆ 小2 / みりん 小2 / 塩 小1/4',
+    step:'葉をはさみで4cmに切り、かぶは半分に切って全部入れ、加圧1分。' },
+
+  { id:'hiyayakko', name:'冷奴', short:'冷奴', machine:'nocook', green:false,
+    ing:'絹豆腐 1丁 / かつお節 1袋 / しょうゆ 小2',
+    step:'器に出してかつお節をのせ、しょうゆをかける。' },
+
+  { id:'sunomono', name:'わかめときゅうりの酢の物', short:'わかめ', machine:'nocook', green:true,
+    ing:'乾燥わかめ 大2 / きゅうり 1本 / 酢 大1 / 砂糖 小2 / しょうゆ 小1',
+    step:'わかめを水で戻して絞り、きゅうりを輪切りにして調味料であえる。' },
+
+  { id:'shirasu', name:'しらすおろし', short:'しらす', machine:'nocook', green:false,
+    ing:'大根 1/4本 / しらす 大3 / しょうゆ 小1',
+    step:'大根をすりおろして軽く水気を切り、しらすをのせてしょうゆをかける。' },
+
+  { id:'kaiso', name:'海藻サラダ', short:'海藻', machine:'nocook', green:false,
+    ing:'乾燥海藻ミックス 大3 / ごま油 小1 / しょうゆ 小1 / 酢 小1 / 白ごま 小1',
+    step:'水に5分つけて戻し、水気を絞って調味料であえる。' }
+];
+
+/* ============================================================
+   MAINS — 主菜カタログ
+   キーは DISHES と同じ（green は主菜では使いません）
+   ============================================================ */
+const MAINS = [
+  { id:'aji', name:'鯵の塩焼き', short:'鯵', machine:'healsio',
+    ing:'鯵 2尾 / 塩 小1/2',
+    step:'塩をふって天板にのせ、まかせて焼きで焼く。' },
+
+  { id:'sake_miso', name:'鮭のみそ漬け焼き', short:'鮭', machine:'healsio',
+    ing:'生鮭 3切れ / みそ 大1.5 / みりん 大1 / 砂糖 小1',
+    step:'調味料を混ぜて鮭にぬり、30分おいて200℃で12分焼く。' },
+
+  { id:'karaage', name:'鶏の唐揚げ', short:'唐揚げ', machine:'healsio',
+    ing:'鶏もも肉 300g / しょうゆ 大1 / 酒 大1 / しょうがすりおろし 小1 / 片栗粉 大4',
+    step:'はさみで一口大に切って調味料をもみ込み、片栗粉をまぶして揚げる。' },
+
+  { id:'hamburg', name:'ハンバーグ', short:'ハンバーグ', machine:'healsio',
+    ing:'合いびき肉 300g / 玉ねぎ 1/2個 / パン粉 大4 / 牛乳 大3 / 塩 小1/2',
+    step:'玉ねぎをすりおろして全部混ぜ、形をつくって200℃で15分焼く。' },
+
+  { id:'curry', name:'カレー', short:'カレー', machine:'hotcook',
+    ing:'鶏もも肉 300g / じゃがいも 2個 / にんじん 1本 / 玉ねぎ 1個 / カレールー 4皿分 / 水 カップ2',
+    step:'肉ははさみ、野菜は4つ割りにして全部入れ、カレーモードで調理。' },
+
+  { id:'nikujaga', name:'肉じゃが', short:'肉じゃが', machine:'hotcook',
+    ing:'豚こま肉 200g / じゃがいも 3個 / にんじん 1本 / 玉ねぎ 1個 / しょうゆ 大2 / みりん 大2 / 砂糖 大1 / 水 カップ1/2',
+    step:'野菜を4つ割りにして全部入れ、煮物モードで20分。' },
+
+  { id:'mabo', name:'麻婆豆腐（甘口）', short:'麻婆豆腐', machine:'hotcook',
+    ing:'豚ひき肉 200g / 絹豆腐 1丁 / みそ 大1 / しょうゆ 大1 / 砂糖 小2 / 水 カップ1/2 / 片栗粉 大1',
+    step:'豆腐を3cm角に切って全部入れ、煮物モードで10分（辛みは入れない）。' },
+
+  { id:'butabara', name:'豚バラ大根', short:'豚バラ大根', machine:'redepot',
+    ing:'豚バラ肉 200g / 大根 1/3本 / しょうゆ 大2 / みりん 大2 / 砂糖 小2 / 水 カップ1/2',
+    step:'大根は2cmの輪切り、肉ははさみで切って全部入れ、加圧5分。' },
+
+  { id:'saba_miso', name:'さばの味噌煮', short:'さば', machine:'redepot',
+    ing:'さば 2切れ / みそ 大2 / みりん 大2 / 砂糖 大1 / しょうがすりおろし 小1 / 水 カップ1/2',
+    step:'全部入れて加圧3分のあと自然放置。' },
+
+  { id:'mushidori', name:'蒸し鶏', short:'蒸し鶏', machine:'redepot',
+    ing:'鶏むね肉 1枚 / 塩 小1/2 / 酒 大1 / 水 カップ1/2',
+    step:'塩と酒をもみ込んで水と一緒に入れ、加圧3分のあと自然放置。' },
+
+  { id:'soboro', name:'鶏そぼろ', short:'そぼろ', machine:'range',
+    ing:'鶏ひき肉 200g / しょうゆ 大2 / みりん 大2 / 砂糖 大1 / しょうがすりおろし 小1',
+    step:'耐熱容器で全部混ぜ、600Wで3分、混ぜてさらに2分。' },
+
+  { id:'kasane', name:'豚肉ともやしの重ね蒸し', short:'豚ともやし', machine:'range',
+    ing:'豚こま肉 200g / もやし 1袋 / 塩 小1/4 / ごま油 小1 / ポン酢 大2',
+    step:'もやしと肉を重ねてラップをし、600Wで6分、ポン酢をかける。' }
 ];
 
 /* 家に常備してある想定のもの。買い物リストで下の段にまとめます。 */
 const PANTRY = ['塩','しょうゆ','砂糖','みりん','みそ','酢','オリーブ油','ごま油','バター',
-  'マヨネーズ','すりごま','白ごま','めんつゆ(3倍)','鶏がらスープの素','水','レモン汁','かつお節'];
+  'マヨネーズ','すりごま','白ごま','めんつゆ(3倍)','鶏がらスープの素','水','レモン汁','かつお節',
+  '酒','片栗粉','パン粉','ポン酢','しょうがすりおろし'];
 /* ===================== DISHES ここまで ===================== */
 
-const MACHINE_LABEL = { hotcook:'ホットクック', redepot:'Re・De Pot', healsio:'ヘルシオ', range:'レンジ' };
+const MACHINE_LABEL = { hotcook:'ホットクック', redepot:'Re・De Pot', healsio:'ヘルシオ',
+                        range:'レンジ', nocook:'火なし' };
 const STORE_KEY = 'kondate.v1';
-const byId = {}; DISHES.forEach(function(d){ byId[d.id] = d; });
+/* 主菜と副菜を同じ索引で引けるようにする（id はまたいで一意） */
+const byId = {};
+DISHES.forEach(function(d){ d.kind = 'side'; byId[d.id] = d; });
+MAINS.forEach(function(d){ d.kind = 'main'; byId[d.id] = d; });
 
 /* ---------- state ---------- */
 let STATE = { made:{}, records:{}, customSides:[], shopping:[], bought:[], pick:null };
@@ -472,16 +596,47 @@ function suggestPair(){
   const b = suggestOne([a.id], !a.green);
   return b ? [a.id, b.id] : [a.id];
 }
+/* 主菜も同じ考え方で、作ってから日が経ったものほど選ばれやすくする */
+function suggestMain(excludeId){
+  let pool = MAINS.filter(function(d){ return d.id !== excludeId; });
+  if(!pool.length) return null;
+  let fresh = pool.filter(function(d){ return daysSince(d.id) > 3; });
+  if(!fresh.length) fresh = pool;
+  fresh = fresh.slice().sort(function(a,b){ return daysSince(b.id) - daysSince(a.id); });
+  const top = fresh.slice(0, Math.min(5, fresh.length));
+  return top[Math.floor(Math.random()*top.length)];
+}
 
 /* =======================================================
    今日タブ
    ======================================================= */
 let selectedIds = [];
 let selectedCustom = [];
+let selectedMainId = null;
 
 const elDate = document.getElementById('dDate');
 const elMain = document.getElementById('dMain');
 const elRice = document.getElementById('dRice');
+
+function renderMainSug(){
+  const box = document.getElementById('mainSug');
+  const d = selectedMainId ? byId[selectedMainId] : null;
+  if(!d){
+    box.innerHTML = '<div class="sug empty-main">主菜は下に書くか、引き直してください'+
+      '<button class="mini" data-act="redraw" style="margin-left:10px;">引く</button></div>';
+    return;
+  }
+  const n = daysSince(d.id);
+  box.innerHTML = '<div class="sug main" data-machine="'+d.machine+'" data-id="'+d.id+'">'+
+    '<div class="nm">'+esc(d.name)+
+      '<div class="mt"><span class="mchip '+d.machine+'">'+MACHINE_LABEL[d.machine]+'</span>'+
+      '<span class="since'+(n===Infinity?' never':'')+'">'+agoLabel(n)+'</span></div>'+
+    '</div>'+
+    '<div class="acts">'+
+      '<button class="mini" data-act="redraw">引き直す</button>'+
+      '<button class="mini" data-act="drop" aria-label="外す">×</button>'+
+    '</div></div>';
+}
 
 function renderSuggestions(){
   const box = document.getElementById('sugList');
@@ -507,6 +662,11 @@ function renderSuggestions(){
 }
 
 function renderChips(){
+  document.getElementById('mainChips').innerHTML = MAINS.map(function(d){
+    const on = selectedMainId === d.id;
+    return '<button type="button" class="chip" data-mainid="'+d.id+'" aria-pressed="'+on+'">'+
+      '<span class="dot" style="background:var(--m-'+d.machine+')"></span>'+esc(d.short)+'</button>';
+  }).join('');
   document.getElementById('sideChips').innerHTML = DISHES.map(function(d){
     const on = selectedIds.indexOf(d.id) !== -1;
     return '<button type="button" class="chip" data-id="'+d.id+'" aria-pressed="'+on+'">'+
@@ -522,7 +682,8 @@ function renderChips(){
 function buildLine(){
   const parts = [];
   const main = elMain.value.trim();
-  if(main) parts.push(main);
+  if(selectedMainId && byId[selectedMainId]) parts.push(byId[selectedMainId].short);
+  else if(main) parts.push(main);
   selectedIds.forEach(function(id){ if(byId[id]) parts.push(byId[id].short); });
   selectedCustom.forEach(function(t){ parts.push(t); });
   if(elRice.checked) parts.push('ご飯');
@@ -533,7 +694,27 @@ function updatePreview(){
   document.getElementById('dPreview').textContent = line || '—';
   document.getElementById('dCopy').disabled = !line;
 }
-function renderToday(){ renderSuggestions(); renderChips(); updatePreview(); }
+function renderToday(){ renderMainSug(); renderSuggestions(); renderChips(); updatePreview(); }
+
+document.getElementById('mainSug').addEventListener('click', function(e){
+  const btn = e.target.closest('button[data-act]'); if(!btn) return;
+  if(btn.dataset.act === 'drop'){ selectedMainId = null; }
+  else {
+    const next = suggestMain(selectedMainId);
+    if(!next){ toast('主菜の候補がありません'); return; }
+    selectedMainId = next.id;
+    elMain.value = '';
+  }
+  persistPick(); renderToday();
+});
+
+document.getElementById('mainChips').addEventListener('click', function(e){
+  const b = e.target.closest('.chip'); if(!b) return;
+  const id = b.dataset.mainid;
+  selectedMainId = (selectedMainId === id) ? null : id;
+  if(selectedMainId) elMain.value = '';
+  persistPick(); renderToday();
+});
 
 document.getElementById('sugList').addEventListener('click', function(e){
   const btn = e.target.closest('button[data-act]');
@@ -552,6 +733,8 @@ document.getElementById('sugList').addEventListener('click', function(e){
 });
 
 document.getElementById('btnRedrawAll').addEventListener('click', function(){
+  const m = suggestMain(null);
+  if(m){ selectedMainId = m.id; elMain.value = ''; }
   selectedIds = suggestPair();
   persistPick(); renderToday();
   toast('引き直しました');
@@ -580,7 +763,10 @@ document.getElementById('dCustom').addEventListener('keydown', function(e){
   if(e.key === 'Enter'){ e.preventDefault(); addCustom(); }
 });
 
-elMain.addEventListener('input', updatePreview);
+elMain.addEventListener('input', function(){
+  if(elMain.value.trim() && selectedMainId){ selectedMainId = null; renderToday(); }
+  else updatePreview();
+});
 elRice.addEventListener('change', updatePreview);
 elDate.addEventListener('change', function(){ loadRecordInto(elDate.value); });
 document.getElementById('dCopy').addEventListener('click', function(){
@@ -589,7 +775,7 @@ document.getElementById('dCopy').addEventListener('click', function(){
 
 function persistPick(){
   if(elDate.value === todayStr() && !STATE.records[todayStr()]){
-    STATE.pick = { date: todayStr(), ids: selectedIds.slice() };
+    STATE.pick = { date: todayStr(), ids: selectedIds.slice(), mainId: selectedMainId };
     save();
   }
 }
@@ -597,19 +783,22 @@ function persistPick(){
 document.getElementById('dSave').addEventListener('click', function(){
   const date = elDate.value || todayStr();
   const main = elMain.value.trim();
-  if(!main && !selectedIds.length && !selectedCustom.length){
+  if(!main && !selectedMainId && !selectedIds.length && !selectedCustom.length){
     toast('主菜か副菜を入れてください'); return;
   }
-  STATE.records[date] = { date:date, main:main, sideIds:selectedIds.slice(),
+  STATE.records[date] = { date:date, main:main, mainId:selectedMainId,
+                          sideIds:selectedIds.slice(),
                           customSides:selectedCustom.slice(), rice:elRice.checked };
   selectedIds.forEach(function(id){ markMade(id, date); });
+  if(selectedMainId) markMade(selectedMainId, date);
   save(); renderToday(); renderList(); renderCalendar();
   toast(prettyDate(date)+' を記録しました');
 });
 
 document.getElementById('dToCart').addEventListener('click', function(){
   let n = 0;
-  selectedIds.forEach(function(id){
+  const ids = selectedMainId ? [selectedMainId].concat(selectedIds) : selectedIds.slice();
+  ids.forEach(function(id){
     if(STATE.shopping.indexOf(id) === -1){ STATE.shopping.push(id); n++; }
   });
   save(); renderList(); renderShop(); updateBadge();
@@ -625,16 +814,20 @@ function loadRecordInto(date){
   const r = STATE.records[date];
   if(r){
     elMain.value = r.main || '';
+    selectedMainId = r.mainId || null;
     selectedIds = Array.isArray(r.sideIds) ? r.sideIds.slice() : [];
     selectedCustom = Array.isArray(r.customSides) ? r.customSides.slice() : [];
     elRice.checked = r.rice !== false;
   }else if(date === todayStr() && STATE.pick && STATE.pick.date === todayStr()){
-    elMain.value=''; selectedIds = STATE.pick.ids.slice(); selectedCustom=[]; elRice.checked=true;
+    elMain.value=''; selectedMainId = STATE.pick.mainId || null;
+    selectedIds = STATE.pick.ids.slice(); selectedCustom=[]; elRice.checked=true;
   }else if(date === todayStr()){
-    elMain.value=''; selectedIds = suggestPair(); selectedCustom=[]; elRice.checked=true;
+    elMain.value='';
+    const m = suggestMain(null); selectedMainId = m ? m.id : null;
+    selectedIds = suggestPair(); selectedCustom=[]; elRice.checked=true;
     persistPick();
   }else{
-    elMain.value=''; selectedIds=[]; selectedCustom=[]; elRice.checked=true;
+    elMain.value=''; selectedMainId=null; selectedIds=[]; selectedCustom=[]; elRice.checked=true;
   }
   document.getElementById('hdrSub').textContent = prettyDate(date)+' の献立';
   renderToday();
@@ -643,20 +836,25 @@ function loadRecordInto(date){
 /* =======================================================
    副菜タブ
    ======================================================= */
-let filterMachine = 'all', filterGreen = false;
+let filterMachine = 'all', filterGreen = false, listKind = 'side';
 
 function renderList(){
-  const rows = DISHES
+  const source = (listKind === 'main') ? MAINS : DISHES;
+  document.getElementById('greenWrap').style.display = (listKind === 'main') ? 'none' : '';
+  const rows = source
     .filter(function(d){
       if(filterMachine !== 'all' && d.machine !== filterMachine) return false;
-      if(filterGreen && !d.green) return false;
+      if(listKind !== 'main' && filterGreen && !d.green) return false;
       return true;
     })
     .map(function(d,i){ return {d:d, n:daysSince(d.id), i:i}; })
     .sort(function(a,b){ return a.n !== b.n ? b.n - a.n : a.i - b.i; });
 
   const el = document.getElementById('dishList');
-  if(!rows.length){ el.innerHTML = '<p class="empty">該当する副菜がありません。</p>'; return; }
+  if(!rows.length){
+    el.innerHTML = '<p class="empty">該当する'+(listKind === 'main' ? '主菜' : '副菜')+'がありません。</p>';
+    return;
+  }
 
   el.innerHTML = rows.map(function(r){
     const d = r.d, recent = (r.n !== Infinity && r.n <= 3);
@@ -669,7 +867,7 @@ function renderList(){
     return '<article class="dish'+(recent?' recent':'')+'" data-machine="'+d.machine+'" data-id="'+d.id+'">'+
       '<div class="dish-head">'+
         '<button class="cartbox" data-act="cart" aria-pressed="'+inCart+'" aria-label="買い物リスト">'+
-          (inCart?'🛒':'🛒')+'</button>'+
+          '🧺'+'</button>'+
         '<div class="dish-tap" data-act="toggle" role="button" tabindex="0">'+
           '<div class="dish-name">'+esc(d.name)+
             '<div class="dish-meta"><span class="mchip '+d.machine+'">'+MACHINE_LABEL[d.machine]+'</span>'+
@@ -706,6 +904,14 @@ document.getElementById('dishList').addEventListener('click', function(e){
     card.classList.toggle('open');
     if(card.classList.contains('open')) card.classList.remove('recent');
   }
+});
+
+document.getElementById('kindSeg').addEventListener('click', function(e){
+  const b = e.target.closest('button[data-kind]'); if(!b) return;
+  listKind = b.dataset.kind;
+  this.querySelectorAll('button').forEach(function(x){
+    x.setAttribute('aria-pressed', String(x.dataset.kind === listKind)); });
+  renderList(); window.scrollTo(0,0);
 });
 
 document.getElementById('machineFilters').addEventListener('click', function(e){
@@ -766,13 +972,16 @@ function shopRow(it){
 function renderShop(){
   const el = document.getElementById('shopBody');
   if(!STATE.shopping.length){
-    el.innerHTML = '<p class="empty">買い物リストは空です。<br>「副菜」タブで 🛒 を押すと入ります。</p>';
+    el.innerHTML = '<p class="empty">買い物リストは空です。<br>「料理」タブで 🧺 を押すと入ります。</p>';
     return;
   }
   const g = buildShopping();
   const names = STATE.shopping.map(function(id){ return byId[id] ? byId[id].short : id; });
+  const nMain = STATE.shopping.filter(function(id){
+    return byId[id] && byId[id].kind === 'main'; }).length;
   el.innerHTML =
-    '<div class="sechead" style="margin-top:4px;">作るもの（'+STATE.shopping.length+'品）</div>'+
+    '<div class="sechead" style="margin-top:4px;">作るもの（'+STATE.shopping.length+'品'+
+      (nMain ? '・うち主菜'+nMain : '')+'）</div>'+
     '<div class="chips">'+STATE.shopping.map(function(id){
       const d = byId[id];
       return '<button type="button" class="chip custom" data-rm="'+id+'">'+
@@ -829,7 +1038,8 @@ let calY, calM, calSel = null;
 
 function recordLine(r){
   const parts = [];
-  if(r.main) parts.push(r.main);
+  if(r.mainId && byId[r.mainId]) parts.push(byId[r.mainId].short);
+  else if(r.main) parts.push(r.main);
   (r.sideIds||[]).forEach(function(id){ parts.push(byId[id] ? byId[id].short : id); });
   (r.customSides||[]).forEach(function(t){ parts.push(t); });
   if(r.rice !== false) parts.push('ご飯');
@@ -869,7 +1079,8 @@ function renderCalDetail(){
     return;
   }
   el.innerHTML = '<div class="rec"><div class="date">'+prettyDate(calSel)+'</div>'+
-    (r.main ? '<div class="main">'+esc(r.main)+'</div>' : '')+
+    ((r.mainId && byId[r.mainId]) ? '<div class="main">'+esc(byId[r.mainId].name)+'</div>'
+      : r.main ? '<div class="main">'+esc(r.main)+'</div>' : '')+
     '<div class="line">'+esc(recordLine(r))+'</div>'+
     '<div class="acts">'+
       '<button class="mini" data-act="copy">コピー</button>'+
@@ -947,7 +1158,7 @@ document.getElementById('fileInput').addEventListener('change', function(e){
 /* =======================================================
    tabs / boot
    ======================================================= */
-const TAB_TITLE = { today:'毎日の献立', list:'副菜', shop:'買い物', cal:'カレンダー' };
+const TAB_TITLE = { today:'毎日の献立', list:'料理', shop:'買い物', cal:'カレンダー' };
 function showTab(name){
   ['today','list','shop','cal'].forEach(function(t){
     document.getElementById('p-'+t).classList.toggle('on', t === name);
